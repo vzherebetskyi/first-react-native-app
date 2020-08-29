@@ -21,9 +21,9 @@ const generateRandomBetween = (min, max, exclude) => {
   max = Math.floor(max);
   const rndNum = Math.floor(Math.random() * (max - min)) + min;
   if (rndNum === exclude) {
-      return generateRandomBetween(min, max, exclude);
+    return generateRandomBetween(min, max, exclude);
   } else {
-      return rndNum;
+    return rndNum;
   }
 };
 
@@ -42,8 +42,23 @@ const GameScreen = ({ userChoice, onGameOver }) => {
     initialGuess
   );
   const [pastGuesses, setPastGuesses] = useState([initialGuess.toString()]);
+  const [availableDeviceWidth, setAvailableDeviceWidth] = useState(Dimensions.get('window').width);
+  const [availableDeviceHeight, setAvailableDeviceHeight] = useState(Dimensions.get('window').height);
   const currentLow = useRef(1);
   const currentHigh = useRef(100);
+
+  useEffect(() => {
+    const updateLayout = () => {
+      setAvailableDeviceWidth(Dimensions.get('window').width);
+      setAvailableDeviceHeight(Dimensions.get('window').height);
+    };
+
+    Dimensions.addEventListener('change', updateLayout);
+
+    return () => {
+      Dimensions.removeEventListener('change', updateLayout);
+    };
+  });
 
   useEffect(() => {
     if (currentGuess === userChoice) {
@@ -53,23 +68,51 @@ const GameScreen = ({ userChoice, onGameOver }) => {
 
   const nextGuessHandler = direction => {
     if ((direction === 'lower' && currentGuess < userChoice) || (direction === 'higher' && currentGuess > userChoice)) {
-        Alert.alert('Don\'t lie', 'You know that this is wrong...', [{
-          text: 'Sorry!',
-          style: 'cancel',
-        }]);
-    return;
+      Alert.alert('Don\'t lie', 'You know that this is wrong...', [{
+        text: 'Sorry!',
+        style: 'cancel',
+      }]);
+      return;
     }
     if (direction === 'lower') {
       currentHigh.current = currentGuess;
       generateRandomBetween();
     } else {
-        currentLow.current = currentGuess + 1;
+      currentLow.current = currentGuess + 1;
     }
     const nextNumber = generateRandomBetween(currentLow.current, currentHigh.current, currentGuess);
     setCurrentGuess(nextNumber);
     // setRounds(curRounds => curRounds + 1);
     setPastGuesses(curPastGuesses => [nextNumber.toString(), ...curPastGuesses])
   };
+
+  if (availableDeviceHeight < 500) {
+    return (
+      <View style={styles.screen}>
+        <Text style={DefaultStyles.title}>Opponent's Guess</Text>
+        <View style={styles.controls}>
+          <MainButton onPress={nextGuessHandler.bind(this, 'lower')}>
+            <Ionicons name="md-remove" size={24} color="white" />
+          </MainButton>
+          <NumberContainer>{currentGuess}</NumberContainer>
+          <MainButton onPress={nextGuessHandler.bind(this, 'higher')}>
+            <Ionicons name="md-add" size={24} color="white" />
+          </MainButton>
+        </View>
+        <View style={styles.listContainer}>
+          {/* <ScrollView contentContainerStyle={styles.list}>
+          {pastGuesses.map((guess, index, array) => renderListItem(guess, array.length - index))}
+        </ScrollView> */}
+          <FlatList
+            keyExtractor={(item) => item}
+            data={pastGuesses}
+            renderItem={renderListItem.bind(this, pastGuesses.length)}
+            contentContainerStyle={styles.list}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -111,9 +154,15 @@ const styles = StyleSheet.create({
     width: 300,
     maxWidth: '90%',
   },
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    width: '80%',
+  },
   listContainer: {
-   flex: 1,
-   width: Dimensions.get('window').width > 350 ? '60%' : '80%',
+    flex: 1,
+    width: Dimensions.get('window').width > 350 ? '60%' : '80%',
   },
   list: {
     flexGrow: 1,
